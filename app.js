@@ -1,5 +1,6 @@
 
-// BUDGET CONTROLLER
+//************************** BUDGET CONTROLLER ************************
+//*********************************************************************
 var budgetController = (function () {
 
     // Creating Expense and Income constructor functions so objects could be created following this default data
@@ -15,6 +16,17 @@ var budgetController = (function () {
         this.value = value;
     };
 
+    // Calculating total incomes and expenses depending on type, getting data from data arrays
+    var calculateTotal = function(type) {
+        var sum = 0;
+        data.allItems[type].forEach(function(cur){
+            sum += cur.value;
+        });
+
+        data.totals[type] = sum;
+    };
+
+
     // We could store all Income, Expenses and total budget data in separate arrays, but as we aware about objects, we can store all data in one object.
     var data = {
         allItems: {
@@ -24,7 +36,9 @@ var budgetController = (function () {
         totals: {
             exp: 0,
             inc: 0
-        }
+        },
+        budget: 0,
+        percentage: -1
     };
 
     // Creating object which will contain our all public methods
@@ -56,6 +70,31 @@ var budgetController = (function () {
             return newItem;
         },
 
+        // Calculate the budget function
+        calculateBudget: function () {
+
+            // Calculate total income and expenses
+            calculateTotal('exp');
+            calculateTotal('inc');
+
+            // Calculate the budget: income - expenses
+            data.budget = data.totals.inc - data.totals.exp;
+
+            // Calculate the percentage of income that we spent
+                data.percentage = Math.round ((data.totals.exp / data.totals.inc) * 100);
+        
+        },
+
+        // Creating method to retrieve data from calculateBudget function
+        getBudget: function() {
+            return {
+                budget: data.budget,
+                totalInc: data.totals.inc,
+                totalExp: data.totals.exp,
+                percentage: data.percentage
+            };
+        },
+
         testing: function() {
             console.log(data);
         }
@@ -64,7 +103,9 @@ var budgetController = (function () {
 })();
 
 
-// UI CONTROLLER
+// ***************************** UI CONTROLLER ****************************
+// ************************************************************************
+
 var UIController = (function () {
 
     // Using object to store all strings from HTMl so it would be easier to edit and have in one place.
@@ -74,7 +115,11 @@ var UIController = (function () {
         inputValue: '.add__value',
         inputBtn: '.add__btn',
         incomeContainer: '.income__list',
-        expensesContainer: '.expenses__list'
+        expensesContainer: '.expenses__list',
+        budgetLabel: '.budget__value',
+        incomeLabel: '.budget__income--value',
+        expensesLabel: '.budget__expenses--value',
+        percentageLabel: '.budget__expenses--percentage'
     };
 
     // Creating object in order to make method/function public
@@ -90,8 +135,8 @@ var UIController = (function () {
                 // Get input data from description field
                 description: document.querySelector(DOMstrings.inputDescription).value,
 
-                // Get input data from value field
-                value: document.querySelector(DOMstrings.inputValue).value
+                // Get input data from value field and make it a number 
+                value: parseFloat(document.querySelector(DOMstrings.inputValue).value)
             };
         },
 
@@ -123,6 +168,37 @@ var UIController = (function () {
 
         },
 
+        // Clear input fields
+        clearFields: function() {
+            var fields, fieldsArr;
+
+            fields = document.querySelectorAll(DOMstrings.inputDescription + ', ' + DOMstrings.inputValue);
+
+            // Trick to put list items in array
+            var fieldsArr = Array.prototype.slice.call(fields);
+
+            // Loopin though array and putting empty space in input fields
+            fieldsArr.forEach(function(current, index, array) {
+                current.value = '';
+            });
+
+            fieldsArr[0].focus();
+        },
+
+        displayBudget: function(obj) {
+
+            document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
+            document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
+            document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;
+            
+
+            if (obj.percentage > 0) {
+                document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + '%';
+            } else {
+                document.querySelector(DOMstrings.percentageLabel).textContent = '---';
+            }
+        },
+
         // We create new object with function in order to make it public and be able to pass to controller module.
         getDOMstrings: function () {
             return DOMstrings;
@@ -132,7 +208,9 @@ var UIController = (function () {
 })();
 
 
-// GLOBAL APP CONTROLLER
+// ************************ GLOBAL APP CONTROLLER **************************
+// *************************************************************************
+
 var controller = (function (budgetCtrl, UICtrl) {
 
     var setupEventListeners = function () {
@@ -156,6 +234,19 @@ var controller = (function (budgetCtrl, UICtrl) {
     });
 };
 
+    var updateBudget = function() {
+
+        // 1. Calculate the budget 
+        budgetCtrl.calculateBudget();
+
+        // 2. Return the budget
+        // We get data from returned getBudget method and store it to budget variable
+        var budget = budgetCtrl.getBudget();
+
+        // 3. Display the budget on the UI
+        UICtrl.displayBudget(budget);
+    };
+
     // function which return after enter or submit button are clicked
     var ctrlAddItem = function () {
 
@@ -164,13 +255,20 @@ var controller = (function (budgetCtrl, UICtrl) {
         // 1. Get field input data
         input = UICtrl.getInput();
 
+        // If description field is not empty and value is not NaN and value is bigger than 0, then we add items to the list
+        if (input.description !== '' && !isNaN(input.value) && input.value > 0) {
         // 2. Add item to the budget controller
         newItem = budgetCtrl.addItem(input.type, input.description, input.value);
 
         // 3. Add the item to the UI
         UICtrl.addListItem(newItem, input.type);
 
-        // 4. Calculate the budget 
+        // 4. Clear fields
+        UICtrl.clearFields();
+
+        // 5. Calculate and update budget
+        updateBudget();
+        }
 
     };
 
@@ -178,6 +276,12 @@ var controller = (function (budgetCtrl, UICtrl) {
     return {
         init: function() {
             console.log('Application has started.');
+            UICtrl.displayBudget({
+                budget: 0,
+                totalInc: 0,
+                totalExp: 0,
+                percentage: 0
+            });
             setupEventListeners();
         }
     };
