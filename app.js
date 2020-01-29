@@ -196,7 +196,12 @@ var UIController = (function () {
         dec = numSplit[1];
 
         return (type === 'exp' ? '-' : '+') + ' ' + int + '.'+ dec;
+    };
 
+    var nodeListForEach = function(list, callback) {
+        for ( var i = 0; i < list.length; i++ ) {
+            callback(list[i], i);
+        }
     };
 
     // Creating object in order to make method/function public
@@ -293,11 +298,6 @@ var UIController = (function () {
 
             var fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
 
-            var nodeListForEach = function(list, callback) {
-                for ( var i = 0; i < list.length; i++ ) {
-                    callback(list[i], i);
-                }
-            };
             nodeListForEach(fields, function(current, index) {
 
                 if(percentages[index] > 0) {
@@ -323,7 +323,17 @@ var UIController = (function () {
 
         changedType: function() {
 
-            
+            var fields = document.querySelectorAll(
+                DOMstrings.inputType + ',' +
+                DOMstrings.inputDescription + ',' +
+                DOMstrings.inputValue
+            );
+
+            nodeListForEach(fields, function(cur){
+                cur.classList.toggle('red-focus');
+            });
+
+            document.querySelector(DOMstrings.inputBtn).classList.toggle('red');
 
         },
 
